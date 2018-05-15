@@ -10,7 +10,8 @@ import (
 )
 
 func Discover(uri string) (net.PacketConn, net.Addr, error) {
-	conn, err := Dial(uri, nil)
+	stop := make(chan struct{})
+	conn, err := Dial(uri, nil, stop)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -20,6 +21,12 @@ func Discover(uri string) (net.PacketConn, net.Addr, error) {
 		return nil, nil, err
 	}
 	// TODO: hijack
+	// stop reading conn before returning it
+	close(stop)
+	// note. serveconn/packet func is blocked by read/readfrom at the time
+	// we send the signal, which means it will still consume one more
+	// packet and we can only read starting from the second packet.
+	// (not too much of a problem, since we'll punch a few packets anyway)
 	return conn.Conn.(net.PacketConn), addr, nil
 }
 
@@ -49,7 +56,7 @@ func ShortTermAuthMethod(password string) AuthMethod {
 	}
 }
 
-func Dial(uri string, config *Config) (*Conn, error) {
+func Dial(uri string, config *Config, stop chan struct{}) (*Conn, error) {
 	secure, network, addr, auth, err := parseURI(uri)
 	if err != nil {
 		return nil, err
@@ -71,7 +78,7 @@ func Dial(uri string, config *Config) (*Conn, error) {
 		config = config.Clone()
 		config.AuthMethod = auth
 	}
-	return NewConn(conn, config), nil
+	return NewConn(conn, config, stop), nil
 }
 
 func parseURI(uri string) (secure bool, network, addr string, auth AuthMethod, err error) {

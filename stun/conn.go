@@ -11,9 +11,9 @@ type Conn struct {
 	sess  *Session
 }
 
-func NewConn(conn net.Conn, config *Config) *Conn {
+func NewConn(conn net.Conn, config *Config, stop chan struct{}) *Conn {
 	a := NewAgent(config)
-	go a.ServeConn(conn)
+	go a.ServeConn(conn, stop)
 	return &Conn{conn, a, nil}
 }
 

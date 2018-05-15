@@ -30,7 +30,8 @@ func (srv *Server) ListenAndServe(network, laddr string) error {
 	}
 	srv.addConn(c)
 	defer srv.removeConn(c)
-	return srv.agent.ServePacket(c)
+	// not using stop channel
+	return srv.agent.ServePacket(c, make(chan struct{}))
 }
 
 func (srv *Server) ServeSTUN(msg *Message, from Transport) {

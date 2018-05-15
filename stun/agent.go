@@ -88,9 +88,9 @@ func (a *Agent) Send(msg *Message, tr Transport) (err error) {
 	return
 }
 
-func (a *Agent) ServeConn(c net.Conn) error {
+func (a *Agent) ServeConn(c net.Conn, stop chan struct{}) error {
 	if c, ok := c.(net.PacketConn); ok {
-		return a.ServePacket(c)
+		return a.ServePacket(c, stop)
 	}
 	var (
 		b = getBuffer()
@@ -98,6 +98,11 @@ func (a *Agent) ServeConn(c net.Conn) error {
 	)
 	defer putBuffer(b)
 	for {
+		select {
+		case <-stop:
+			return nil
+		default:
+		}
 		if p >= len(b) {
 			return errBufferOverflow
 		}
@@ -124,12 +129,18 @@ func (a *Agent) ServeConn(c net.Conn) error {
 	}
 }
 
-func (a *Agent) ServePacket(c net.PacketConn) error {
+func (a *Agent) ServePacket(c net.PacketConn, stop chan struct{}) error {
 	b := getBuffer()
 	defer putBuffer(b)
-	defer c.Close()
+	// don't close the connection since we're going to reuse it
+	// defer c.Close()
 
 	for {
+		select {
+		case <-stop:
+			return nil
+		default:
+		}
 		n, addr, err := c.ReadFrom(b)
 		if err != nil {
 			return err

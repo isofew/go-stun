@@ -30,7 +30,8 @@ func (d *Detector) Hairpinning() error {
 	if err != nil {
 		return err
 	}
-	c := NewConn(conn, d.agent.config)
+	// not using stop channel
+	c := NewConn(conn, d.agent.config, make(chan struct{}))
 	defer c.Close()
 	_, err = c.Discover()
 	return err
@@ -88,7 +89,8 @@ func (d *Detector) DiscoverOther(addr net.Addr) (net.Addr, error) {
 		return nil, err
 	}
 	defer conn.Close()
-	go d.agent.ServeConn(conn)
+	// not using stop channel
+	go d.agent.ServeConn(conn, make(chan struct{}))
 	res, _, err := d.RequestTransport(&Message{Type: MethodBinding}, conn)
 	if err != nil {
 		return nil, err
